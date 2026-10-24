@@ -1,0 +1,230 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>إدارة الإشعارات</title>
+<style>
+:root{--bg:#0e1220;--card:#171d30;--line:#2a3350;--tx:#e9edf8;--mut:#93a0c0;--pri:#6c7bff;--ok:#2fc58a;--bad:#ff6b6b;--warn:#f5b84b}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--tx);font:16px/1.7 "Segoe UI",Tahoma,Arial,sans-serif;display:flex;justify-content:center;padding:16px}
+main{width:100%;max-width:760px;display:grid;gap:14px;align-content:start}
+h1{font-size:22px;margin:8px 0 0}h2{font-size:17px;margin:0 0 10px}
+p{margin:0}.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:18px}
+.mut{color:var(--mut);font-size:14px}
+label{display:block;font-size:14px;color:var(--mut);margin:10px 0 4px}
+input,textarea{width:100%;font:inherit;color:var(--tx);background:#0e1220;border:1px solid var(--line);border-radius:10px;padding:10px 12px}
+input[type=radio]{width:auto}
+input.ltr{direction:ltr;text-align:left}
+textarea{min-height:90px;resize:vertical}
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+button{font:inherit;cursor:pointer;border:0;border-radius:10px;padding:10px 18px;background:var(--pri);color:#fff}
+button.sec{background:#232b45;color:var(--tx);border:1px solid var(--line)}
+button.bad{background:#3a1f28;color:var(--bad);border:1px solid var(--bad)}
+button:disabled{opacity:.5;cursor:default}
+.badge{display:inline-block;padding:3px 12px;border-radius:99px;font-size:14px;border:1px solid var(--line)}
+.badge.ok{color:var(--ok);border-color:var(--ok)}.badge.bad{color:var(--bad);border-color:var(--bad)}.badge.warn{color:var(--warn);border-color:var(--warn)}
+#toast{position:fixed;bottom:16px;inset-inline:16px;max-width:560px;margin-inline:auto;padding:12px 16px;border-radius:12px;background:#10162a;border:1px solid var(--line);display:none;z-index:9;white-space:pre-wrap;word-break:break-word}
+#toast.show{display:block}#toast.ok{border-color:var(--ok)}#toast.bad{border-color:var(--bad)}#toast.warn{border-color:var(--warn)}
+table{width:100%;border-collapse:collapse;font-size:14px}
+th,td{padding:7px 6px;border-bottom:1px solid var(--line);text-align:start;vertical-align:top}
+td.ltr{direction:ltr;text-align:left;font-size:12.5px;word-break:break-all}
+.opt{display:flex;gap:8px;align-items:center;margin:4px 0}
+.hide{display:none}
+.scroll{overflow:auto}
+</style>
+</head>
+<body>
+<main>
+  <h1>📣 إدارة الإشعارات</h1>
+
+  <!-- 1) المفتاح: يُدخل مرة واحدة فقط -->
+  <section class="card" id="keyCard">
+    <div class="row" style="justify-content:space-between"><h2 style="margin:0">مفتاح الإرسال</h2><span class="badge warn" id="keyBadge">غير مُدخل</span></div>
+    <div id="keyForm">
+      <p class="mut" style="margin-top:6px">الصق «REST API Key» من OneSignal (Settings ← Keys &amp; IDs). تُدخله مرة واحدة فقط، فيُحفظ في متصفح هذا الجهاز ولا يظهر في الملفات.</p>
+      <label>REST API Key</label>
+      <input id="keyIn" class="ltr" type="password" autocomplete="off" placeholder="os_v2_app_…">
+      <div class="row" style="margin-top:12px"><button id="keySave">حفظ وتحقق</button></div>
+    </div>
+    <div id="keySet" class="hide">
+      <p class="mut" style="margin-top:6px">المفتاح محفوظ على هذا الجهاز (ينتهي بـ <b id="keyTail"></b>).</p>
+      <div class="row" style="margin-top:12px"><button class="bad" id="keyDel">حذف المفتاح من هذا الجهاز</button></div>
+    </div>
+  </section>
+
+  <!-- 2) الإرسال -->
+  <section class="card">
+    <h2>إرسال إشعار</h2>
+    <label>العنوان</label><input id="fTitle" maxlength="120" placeholder="مثال: عرض جديد">
+    <label>الرسالة</label><textarea id="fBody" maxlength="500" placeholder="نص الإشعار"></textarea>
+    <label>رابط يُفتح عند الضغط (اختياري)</label><input id="fUrl" class="ltr" placeholder="https://…">
+    <label>رابط صورة كبيرة (اختياري)</label><input id="fImg" class="ltr" placeholder="https://…/image.jpg">
+    <label>الجمهور</label>
+    <div class="opt"><input type="radio" name="aud" id="aAll" checked><label for="aAll" style="margin:0;color:var(--tx)">كل المشتركين</label></div>
+    <div class="opt"><input type="radio" name="aud" id="aOne"><label for="aOne" style="margin:0;color:var(--tx)">جهاز محدد</label></div>
+    <div id="oneBox" class="hide"><input id="fTarget" class="ltr" placeholder="Subscription ID أو External ID"></div>
+    <label>جدولة (اختياري — اتركه فارغًا للإرسال الآن)</label><input id="fWhen" type="datetime-local" class="ltr">
+    <div class="row" style="margin-top:14px"><button id="send">إرسال</button></div>
+  </section>
+
+  <!-- 3) المشتركون -->
+  <section class="card">
+    <div class="row" style="justify-content:space-between"><h2 style="margin:0">المشتركون</h2><button class="sec" id="subsBtn">فحص المشتركين</button></div>
+    <p class="mut" id="subsSum" style="margin-top:6px">اضغط «فحص» لعرض الأجهزة المسجّلة وحالة كل منها.</p>
+    <div class="scroll"><table id="subsTbl" class="hide"><thead><tr><th>المعرّف</th><th>الجهاز</th><th>الحالة</th><th>آخر نشاط</th></tr></thead><tbody></tbody></table></div>
+  </section>
+
+  <!-- 4) السجل -->
+  <section class="card">
+    <div class="row" style="justify-content:space-between"><h2 style="margin:0">آخر الإشعارات</h2><button class="sec" id="histBtn">تحديث</button></div>
+    <div class="scroll"><table id="histTbl" class="hide"><thead><tr><th>العنوان</th><th>وصل</th><th>فشل</th><th>الحالة</th><th></th></tr></thead><tbody></tbody></table></div>
+    <p class="mut" id="histSum" style="margin-top:6px"></p>
+  </section>
+</main>
+<div id="toast"></div>
+
+<script>
+/* ===== الإعداد: قيم عامة ===== */
+const APP_ID='b68d3064-f5c0-446f-b0e3-9733b0d291ee';
+const SITE_URL=location.origin+location.pathname.replace(/[^/]*$/,'');
+const API='https://api.onesignal.com';
+const SEGMENTS=['Subscribed Users','Total Subscriptions','Active Subscriptions'];   // أسماء الشرائح الافتراضية
+
+const $=id=>document.getElementById(id);
+let KEY='';try{KEY=localStorage.getItem('osl_rest_key')||''}catch(e){}
+
+function toast(t,k){const e=$('toast');e.textContent=t;e.className='show '+(k||'');clearTimeout(toast.t);toast.t=setTimeout(()=>e.className='',k==='bad'?12000:5000)}
+const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const uid=()=>(crypto.randomUUID?crypto.randomUUID():'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g,c=>{const r=Math.random()*16|0;return(c=='x'?r:r&3|8).toString(16)}));
+const isUuid=s=>/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(s);
+
+/* ===== استدعاء OneSignal مباشرة من المتصفح ===== */
+class ApiErr extends Error{constructor(m,code,body){super(m);this.code=code;this.body=body}}
+async function os(method,path,body,authScheme){
+  if(!KEY)throw new ApiErr('أدخل مفتاح REST أولًا.','NO_KEY');
+  let r;
+  try{r=await fetch(API+path,{method,headers:{Authorization:(authScheme||'Key')+' '+KEY,'Content-Type':'application/json',Accept:'application/json'},body:body?JSON.stringify(body):undefined})}
+  catch(e){throw new ApiErr('تعذر الاتصال بـ OneSignal (شبكة أو حظر المتصفح للطلب). تأكد من الإنترنت وأوقف مانع الإعلانات.','NETWORK')}
+  const txt=await r.text();let j=null;try{j=txt?JSON.parse(txt):null}catch(e){}
+  if(!r.ok){
+    const detail=j&&j.errors?(Array.isArray(j.errors)?j.errors.join(' | '):JSON.stringify(j.errors)):txt.slice(0,200);
+    const why=r.status===401||r.status===403?'المفتاح غير صالح أو لا يخص هذا التطبيق':'';
+    throw new ApiErr('رفض OneSignal الطلب (HTTP '+r.status+')'+(why?' — '+why:'')+(detail?': '+detail:''),'HTTP_'+r.status,j)}
+  return j;
+}
+
+/* ===== المفتاح ===== */
+function drawKey(){
+  $('keyForm').className=KEY?'hide':'';$('keySet').className=KEY?'':'hide';
+  $('keyBadge').textContent=KEY?'محفوظ':'غير مُدخل';$('keyBadge').className='badge '+(KEY?'ok':'warn');
+  $('keyTail').textContent=KEY?KEY.slice(-4):'';
+}
+$('keySave').onclick=async()=>{
+  const v=$('keyIn').value.trim();
+  if(!/^[\w\-]{20,}$/.test(v))return toast('شكل المفتاح غير صالح. انسخه كاملًا من OneSignal.','bad');
+  const old=KEY;KEY=v;$('keySave').disabled=true;
+  try{await os('GET','/notifications?app_id='+APP_ID+'&limit=1');
+    try{localStorage.setItem('osl_rest_key',v)}catch(e){toast('المفتاح صحيح لكن تعذر حفظه في هذا المتصفح، سيزول بإغلاق الصفحة.','warn')}
+    $('keyIn').value='';drawKey();toast('المفتاح صحيح ومحفوظ ✓','ok');loadHist()}
+  catch(e){KEY=old;toast('لم يُحفظ المفتاح: '+e.message,'bad')}
+  finally{$('keySave').disabled=false}
+};
+$('keyDel').onclick=()=>{if(!confirm('حذف المفتاح من هذا الجهاز؟'))return;KEY='';try{localStorage.removeItem('osl_rest_key')}catch(e){}drawKey();toast('تم الحذف','ok')};
+
+/* ===== الإرسال ===== */
+document.querySelectorAll('input[name=aud]').forEach(r=>r.onchange=()=>{$('oneBox').className=$('aOne').checked?'':'hide'});
+const explain=(e)=>{
+  const m=(e&&e.message)||String(e);
+  if(/invalid_player_ids|invalid_aliases/i.test(m))return m+'\n→ هذا المعرّف غير صالح عند OneSignal (اشتراك قديم أو محذوف أو من تطبيق آخر). افتح الصفحة الرئيسية ← «تشخيص وإعادة ضبط» ← «إعادة ضبط الاشتراك»، ثم انسخ المعرّف الجديد.';
+  if(/not subscribed/i.test(m))return m+'\n→ لا يوجد مشترك صالح في هذا الجمهور. اضغط «فحص المشتركين» لرؤية الحالة الفعلية.';
+  return m};
+
+function buildBase(){
+  const title=$('fTitle').value.trim(),body=$('fBody').value.trim(),url=$('fUrl').value.trim(),img=$('fImg').value.trim(),when=$('fWhen').value;
+  if(!body)throw new Error('اكتب نص الرسالة.');
+  if(url&&!/^https?:\/\//i.test(url))throw new Error('الرابط يجب أن يبدأ بـ https://');
+  if(img&&!/^https:\/\//i.test(img))throw new Error('رابط الصورة يجب أن يبدأ بـ https://');
+  const p={app_id:APP_ID,target_channel:'push',contents:{en:body,ar:body}};
+  if(title)p.headings={en:title,ar:title};
+  p.url=url||SITE_URL;
+  if(img)p.chrome_web_image=img;
+  if(when){const d=new Date(when);if(isNaN(d)||d.getTime()<Date.now()+30000)throw new Error('وقت الجدولة يجب أن يكون في المستقبل.');p.send_after=d.toString()}
+  return p;
+}
+async function post(p){
+  const r=await os('POST','/notifications',p);
+  if(r&&r.id)return r;
+  throw new ApiErr('لم يتم الإرسال: '+(r&&r.errors?JSON.stringify(r.errors):'لم يُرجع OneSignal معرّفًا'),'NO_ID',r);
+}
+$('send').onclick=async()=>{
+  let base;try{base=buildBase()}catch(e){return toast(e.message,'bad')}
+  const one=$('aOne').checked,t=$('fTarget').value.trim();
+  if(one&&!t)return toast('أدخل Subscription ID أو External ID.','bad');
+  if(!confirm(one?'إرسال إلى الجهاز المحدد؟':'إرسال إلى كل المشتركين؟'))return;
+  $('send').disabled=true;
+  try{
+    let res;
+    if(one){
+      const p={...base,idempotency_key:uid()};
+      if(isUuid(t))p.include_subscription_ids=[t];else p.include_aliases={external_id:[t]};
+      res=await post(p);
+    }else{
+      let last=null;
+      for(const seg of SEGMENTS){
+        try{res=await post({...base,included_segments:[seg],idempotency_key:uid()});break}
+        catch(e){last=e;if(e.code==='NO_KEY'||e.code==='NETWORK'||/^HTTP_(401|403|429)$/.test(e.code))throw e}}
+      if(!res)throw last;
+    }
+    toast('تم قبول الإشعار من OneSignal ✓\nالمعرّف: '+res.id+(res.recipients!=null?'\nالمستلمون: '+res.recipients:''),'ok');
+    setTimeout(loadHist,1500);
+  }catch(e){toast('فشل الإرسال: '+explain(e),'bad')}
+  finally{$('send').disabled=false}
+};
+
+/* ===== المشتركون ===== */
+const ago=ts=>{if(!ts)return '—';const s=Math.max(0,Date.now()/1000-ts);if(s<3600)return Math.round(s/60)+' د';if(s<86400)return Math.round(s/3600)+' س';return Math.round(s/86400)+' يوم'};
+$('subsBtn').onclick=async()=>{
+  $('subsBtn').disabled=true;
+  try{
+    let j;
+    try{j=await os('GET','/players?app_id='+APP_ID+'&limit=300')}
+    catch(e){if(/HTTP_40[13]/.test(e.code))j=await os('GET','/players?app_id='+APP_ID+'&limit=300',null,'Basic');else throw e}
+    const list=(j&&j.players)||[];
+    const good=list.filter(p=>p.notification_types===1&&!p.invalid_identifier);
+    $('subsSum').textContent='الإجمالي المسجّل: '+(j.total_count!=null?j.total_count:list.length)+' · صالح للإرسال: '+good.length+(list.length<(j.total_count||0)?' (عُرض أول '+list.length+')':'');
+    const tb=$('subsTbl').querySelector('tbody');
+    tb.innerHTML=list.map(p=>{const ok=p.notification_types===1&&!p.invalid_identifier;
+      const st=p.invalid_identifier?'<span class="badge bad">غير صالح</span>':p.notification_types===1?'<span class="badge ok">مشترك</span>':'<span class="badge warn">غير مشترك ('+esc(p.notification_types)+')</span>';
+      return '<tr><td class="ltr">'+esc(p.id)+'</td><td>'+esc(p.device_model||p.device_type)+'</td><td>'+st+'</td><td>'+ago(p.last_active)+'</td></tr>'}).join('');
+    $('subsTbl').className=list.length?'':'hide';
+    if(!list.length)$('subsSum').textContent+=' — لا يوجد أي جهاز. افتح الصفحة الرئيسية وفعّل الإشعارات.';
+  }catch(e){$('subsSum').textContent='تعذر جلب المشتركين: '+e.message;$('subsTbl').className='hide'}
+  finally{$('subsBtn').disabled=false}
+};
+
+/* ===== السجل ===== */
+const pick=o=>o&&(o.ar||o.en||Object.values(o)[0])||'—';
+async function loadHist(){
+  if(!KEY)return;
+  $('histBtn').disabled=true;
+  try{
+    const j=await os('GET','/notifications?app_id='+APP_ID+'&limit=15');
+    const list=(j&&j.notifications)||[];
+    $('histTbl').querySelector('tbody').innerHTML=list.map(n=>{
+      const sched=n.send_after&&n.send_after*1000>Date.now()&&!n.completed_at;
+      const st=n.canceled?'ملغى':sched?'مجدول':n.completed_at?'اكتمل':'قيد الإرسال';
+      return '<tr><td>'+esc(pick(n.headings)!=='—'?pick(n.headings):pick(n.contents)).slice(0,60)+'</td><td>'+esc(n.successful||0)+'</td><td>'+esc((n.failed||0)+(n.errored||0))+'</td><td>'+st+'</td><td>'+(sched&&!n.canceled?'<button class="sec" style="padding:2px 10px" data-c="'+esc(n.id)+'">إلغاء</button>':'')+'</td></tr>'}).join('');
+    $('histTbl').className=list.length?'':'hide';
+    $('histSum').textContent=list.length?'':'لا توجد إشعارات بعد.';
+  }catch(e){$('histSum').textContent='تعذر جلب السجل: '+e.message;$('histTbl').className='hide'}
+  finally{$('histBtn').disabled=false}
+}
+$('histBtn').onclick=loadHist;
+$('histTbl').onclick=async ev=>{const id=ev.target.dataset&&ev.target.dataset.c;if(!id||!confirm('إلغاء هذا الإشعار المجدول؟'))return;
+  try{await os('DELETE','/notifications/'+encodeURIComponent(id)+'?app_id='+APP_ID);toast('تم الإلغاء','ok');loadHist()}catch(e){toast('تعذر الإلغاء: '+e.message,'bad')}};
+
+drawKey();loadHist();
+</script>
+</body>
+</html>
